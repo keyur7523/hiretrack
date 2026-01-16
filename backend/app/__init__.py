@@ -1,0 +1,1 @@
+"""HireTrack backend app package."""
