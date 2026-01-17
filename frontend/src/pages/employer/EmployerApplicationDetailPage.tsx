@@ -145,7 +145,9 @@ export function EmployerApplicationDetailPage() {
             <CardContent className="space-y-4 p-6">
               <h3 className="text-lg font-semibold">Resume Text</h3>
               <p className="whitespace-pre-line text-sm text-muted-foreground">
-                {details.resumeText || 'No resume text provided.'}
+                {details.application.resumeText?.trim()
+                  ? details.application.resumeText
+                  : 'No resume text provided.'}
               </p>
             </CardContent>
           </Card>
@@ -154,7 +156,9 @@ export function EmployerApplicationDetailPage() {
             <CardContent className="space-y-4 p-6">
               <h3 className="text-lg font-semibold">Cover Letter</h3>
               <p className="whitespace-pre-line text-sm text-muted-foreground">
-                {details.coverLetter || 'No cover letter provided.'}
+                {details.application.coverLetter?.trim()
+                  ? details.application.coverLetter
+                  : 'No cover letter provided.'}
               </p>
             </CardContent>
           </Card>

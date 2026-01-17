@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -22,9 +23,9 @@ async def list_job_applications(
 ):
     job = await ensure_employer_access(session, user=user, job_id=job_id)
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Job not found')
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail='Job not found')
 
-    items, page, page_size, total = await list_applications_for_job(
+    items, page_num, page_size, total = await list_applications_for_job(
         session,
         job_id=job_id,
         status=status,
@@ -41,4 +42,4 @@ async def list_job_applications(
         ).model_dump(exclude_none=True)
         for item in items
     ]
-    return PaginatedResponse(items=response_items, page=page, pageSize=page_size, total=total)
+    return PaginatedResponse(items=response_items, page=page_num, pageSize=page_size, total=total)

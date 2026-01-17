@@ -6,6 +6,8 @@ from uuid import UUID
 from app.db import get_session
 from app.deps import get_current_user, require_roles
 from app.models import Application, Job, User, UserRole, StatusHistory
+from app.metrics import increment
+from app.queue import enqueue
 from app.schemas import ApplicationCreate, ApplicationDetails, ApplicationResponse, ApplicationStatusUpdate, PaginatedResponse
 from app.services.applications import (
     apply_for_job,
@@ -44,12 +46,19 @@ async def create_application(
         raise
 
     await session.commit()
+    increment('application_submissions', 1)
+    try:
+        await enqueue('application.submitted', {'applicationId': str(application.id), 'jobId': str(application.job_id)})
+    except Exception:
+        pass
     return ApplicationResponse(
         id=application.id,
         jobId=application.job_id,
         applicantId=application.applicant_id,
         status=application.status,
         createdAt=application.created_at,
+        resumeText=application.resume_text,
+        coverLetter=application.cover_letter,
     )
 
 
@@ -166,6 +175,14 @@ async def update_status(
         raise
 
     await session.commit()
+    increment('status_transitions', 1)
+    try:
+        await enqueue(
+            'application.status_changed',
+            {'applicationId': str(updated.id), 'status': updated.status.value},
+        )
+    except Exception:
+        pass
     return ApplicationResponse(
         id=updated.id,
         jobId=updated.job_id,

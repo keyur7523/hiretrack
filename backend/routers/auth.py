@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix='/auth', tags=['auth'])
 
 
 @router.post('/register', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegisterRequest, session: AsyncSession = Depends(get_session)):
+async def register(payload: RegisterRequest, request: Request, session: AsyncSession = Depends(get_session)):
     if payload.role == UserRole.admin:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid role')
     if len(payload.password) < 8:
@@ -39,11 +39,12 @@ async def register(payload: RegisterRequest, session: AsyncSession = Depends(get
         metadata={'email': user.email, 'role': user.role.value},
     )
     await session.commit()
+    request.state.user_id = str(user.id)
     return UserResponse.model_validate(user)
 
 
 @router.post('/login', response_model=TokenResponse)
-async def login(payload: LoginRequest, session: AsyncSession = Depends(get_session)):
+async def login(payload: LoginRequest, request: Request, session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
@@ -59,6 +60,7 @@ async def login(payload: LoginRequest, session: AsyncSession = Depends(get_sessi
         metadata={'email': user.email},
     )
     await session.commit()
+    request.state.user_id = str(user.id)
     return TokenResponse(accessToken=token, user=UserResponse.model_validate(user))
 
 

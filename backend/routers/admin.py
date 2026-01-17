@@ -5,7 +5,9 @@ from uuid import UUID
 
 from app.db import get_redis, get_session
 from app.deps import require_roles
+from app.metrics import snapshot
 from app.models import AuditLog, UserRole
+from app.queue import dlq_size, queue_depth
 from app.schemas import HealthComponent, HealthResponse, PaginatedResponse, AuditLogResponse
 from app.utils import paginate
 
@@ -20,6 +22,8 @@ async def health_check(
     components: list[HealthComponent] = []
     db_ok = False
     redis_ok = False
+    queue_ok = False
+    dlq_count = 0
 
     try:
         await session.execute(select(1))
@@ -36,8 +40,22 @@ async def health_check(
         redis_ok = False
     components.append(HealthComponent(name='redis', status='ok' if redis_ok else 'down'))
 
+    if redis_ok:
+        try:
+            dlq_count = await dlq_size()
+            queue_ok = dlq_count == 0
+        except Exception:
+            queue_ok = False
+    components.append(
+        HealthComponent(
+            name='queue',
+            status='ok' if queue_ok else 'degraded',
+            message=f'dlq_size={dlq_count}',
+        )
+    )
+
     if db_ok and redis_ok:
-        overall = 'ok'
+        overall = 'ok' if queue_ok else 'degraded'
     elif not db_ok and not redis_ok:
         overall = 'down'
     else:
@@ -71,3 +89,15 @@ async def list_audit_logs(
 
     response_items = [AuditLogResponse.model_validate(item).model_dump(by_alias=True) for item in items]
     return PaginatedResponse(items=response_items, page=page, pageSize=page_size, total=total)
+
+
+@router.get('/metrics')
+async def metrics_endpoint(_user=Depends(require_roles(UserRole.admin))):
+    data = snapshot()
+    try:
+        data['queue_depth'] = await queue_depth()
+        data['dlq_size'] = await dlq_size()
+    except Exception:
+        data['queue_depth'] = 0
+        data['dlq_size'] = 0
+    return data

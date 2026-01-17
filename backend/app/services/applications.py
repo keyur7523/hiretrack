@@ -28,24 +28,35 @@ async def apply_for_job(
     cover_letter: str | None,
     idempotency_key: str,
 ) -> Application:
-    redis_client = get_redis()
-    key = f'idem:{user.id}:{idempotency_key}'
-    existing_id = await redis_client.get(key)
-    if existing_id:
-        existing = await session.get(Application, UUID(existing_id))
-        if existing:
-            return existing
-
+    # STEP 1: Job validation (BEFORE Redis)
     job = await session.get(Job, job_id)
     if not job or job.status != JobStatus.active:
         raise ValueError('job_not_active')
 
-    existing = await session.execute(
+    # STEP 2: Redis idempotency lookup (BEST-EFFORT)
+    redis_client = get_redis()
+    key = f'idem:{user.id}:{idempotency_key}'
+    redis_available = True
+
+    try:
+        existing_id = await redis_client.get(key)
+        if existing_id:
+            cached_app = await session.get(Application, UUID(existing_id))
+            if cached_app:
+                return cached_app
+            # Cached ID not in DB, continue to create
+    except Exception as e:
+        print(f"[WARN] Redis idempotency lookup failed: {type(e).__name__}: {e}")
+        redis_available = False
+
+    # STEP 3: DB uniqueness check (AFTER Redis)
+    existing_result = await session.execute(
         select(Application).where(Application.job_id == job_id, Application.applicant_id == user.id)
     )
-    if existing.scalar_one_or_none():
+    if existing_result.scalar_one_or_none():
         raise ValueError('application_exists')
 
+    # STEP 4: Create application
     application = Application(
         job_id=job_id,
         applicant_id=user.id,
@@ -57,6 +68,7 @@ async def apply_for_job(
     try:
         await session.flush()
     except IntegrityError as exc:
+        await session.rollback()
         raise ValueError('application_exists') from exc
 
     status_history = StatusHistory(
@@ -75,7 +87,13 @@ async def apply_for_job(
         metadata={'jobId': str(job_id), 'applicationId': str(application.id)},
     )
 
-    await redis_client.setex(key, int(timedelta(hours=24).total_seconds()), str(application.id))
+    # STEP 5: Redis setex (BEST-EFFORT)
+    if redis_available:
+        try:
+            await redis_client.setex(key, int(timedelta(hours=24).total_seconds()), str(application.id))
+        except Exception as e:
+            print(f"[WARN] Redis idempotency store failed: {type(e).__name__}: {e}")
+
     return application
 
 

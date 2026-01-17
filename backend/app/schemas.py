@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, EmailStr
 
 from app.models import ApplicationStatus, EmploymentType, JobStatus, UserRole
 
@@ -60,10 +60,16 @@ class JobResponse(BaseModel):
     company: str
     location: str
     description: str
-    employmentType: EmploymentType = Field(alias='employmentType')
+    employmentType: EmploymentType = Field(
+        validation_alias=AliasChoices('employment_type', 'employmentType'),
+        serialization_alias='employmentType',
+    )
     remote: bool
     status: JobStatus
-    created_at: datetime = Field(alias='createdAt')
+    createdAt: datetime = Field(
+        validation_alias=AliasChoices('created_at', 'createdAt'),
+        serialization_alias='createdAt',
+    )
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -83,12 +89,12 @@ class ApplicationCreate(BaseModel):
 
 class ApplicationResponse(BaseModel):
     id: UUID
-    jobId: UUID
-    applicantId: UUID
+    jobId: UUID = Field(validation_alias='job_id', serialization_alias='jobId')
+    applicantId: UUID = Field(validation_alias='applicant_id', serialization_alias='applicantId')
     status: ApplicationStatus
-    createdAt: datetime
-    resumeText: str | None = None
-    coverLetter: str | None = None
+    createdAt: datetime = Field(validation_alias='created_at', serialization_alias='createdAt')
+    resumeText: str | None = Field(default=None, validation_alias='resume_text', serialization_alias='resumeText')
+    coverLetter: str | None = Field(default=None, validation_alias='cover_letter', serialization_alias='coverLetter')
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -105,12 +111,12 @@ class ApplicationStatusUpdate(BaseModel):
 
 class AuditLogResponse(BaseModel):
     id: UUID
-    actorId: UUID | None = Field(alias='actor_id')
+    actorId: UUID | None = Field(validation_alias='actor_id', serialization_alias='actorId')
     action: str
-    entityType: str = Field(alias='entity_type')
-    entityId: UUID | None = Field(alias='entity_id')
-    createdAt: datetime = Field(alias='created_at')
-    metadata: dict = Field(alias='metadata_')
+    entityType: str = Field(validation_alias='entity_type', serialization_alias='entityType')
+    entityId: UUID | None = Field(validation_alias='entity_id', serialization_alias='entityId')
+    createdAt: datetime = Field(validation_alias='created_at', serialization_alias='createdAt')
+    metadata: dict = Field(validation_alias='metadata_', serialization_alias='metadata')
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

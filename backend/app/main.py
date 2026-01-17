@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db import close_redis, init_redis
+from app.metrics import increment
 from app.utils import get_request_id, log_event
 from routers import router as api_router
 
@@ -32,10 +33,14 @@ async def request_logging_middleware(request: Request, call_next):
     start_time = time.perf_counter()
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start_time) * 1000
+    increment('total_requests', 1)
+    if response.status_code >= 400:
+        increment('error_requests', 1)
     log_event(
         'request',
         request_id=request_id,
-        path=request.url.path,
+        user_id=getattr(request.state, 'user_id', None),
+        endpoint=request.url.path,
         method=request.method,
         status_code=response.status_code,
         duration_ms=round(duration_ms, 2),

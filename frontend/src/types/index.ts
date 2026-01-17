@@ -58,11 +58,9 @@ export interface StatusChange {
 }
 
 export interface ApplicationDetails {
-  application: Application;
+  application: Application & { resumeText?: string; coverLetter?: string };
   job: Pick<Job, 'id' | 'title' | 'company' | 'location'>;
   statusHistory: StatusChange[];
-  resumeText?: string;
-  coverLetter?: string;
 }
 
 export interface ApplicationFormData {

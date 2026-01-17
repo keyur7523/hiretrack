@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
@@ -13,6 +13,7 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     session: AsyncSession = Depends(get_session),
 ) -> User:
@@ -34,6 +35,7 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not found')
+    request.state.user_id = str(user.id)
     return user
 
 
