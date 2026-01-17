@@ -11,6 +11,7 @@ from routers import router as api_router
 
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -49,8 +50,37 @@ async def request_logging_middleware(request: Request, call_next):
     return response
 
 
+def run_migrations():
+    """Run Alembic migrations on startup using subprocess."""
+    import subprocess
+    import sys
+    import os
+    
+    try:
+        logger.info("Running database migrations...")
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=base_dir,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            logger.info("Migrations completed successfully")
+        else:
+            logger.error(f"Migration failed: {result.stderr}")
+    except subprocess.TimeoutExpired:
+        logger.error("Migration timed out")
+    except Exception as e:
+        logger.error(f"Migration error: {e}")
+
+
 @app.on_event('startup')
 async def on_startup() -> None:
+    run_migrations()
     init_redis()
 
 
