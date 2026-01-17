@@ -1,6 +1,6 @@
 # HireTrack E2E Test Report
 
-**Generated:** 2026-01-16T16:44:17.549251  
+**Generated:** 2026-01-17T11:30:14.793682  
 **Base URL:** http://localhost:8080
 
 ## Environment
