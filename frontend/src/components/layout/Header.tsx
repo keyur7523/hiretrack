@@ -7,8 +7,9 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-background border-b border-border z-50 flex items-center px-4 lg:pl-[calc(var(--sidebar-width)+1rem)]">
       <div className="flex items-center gap-2 lg:hidden">
-        <Link to="/app" className="text-xl font-semibold text-primary">
-          HireTrack
+        <Link to="/app" className="flex items-center gap-2">
+          <img src="/favicon.svg" alt="HireTrack" className="w-8 h-8" />
+          <span className="text-xl font-semibold text-primary">HireTrack</span>
         </Link>
       </div>
 

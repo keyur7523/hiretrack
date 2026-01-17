@@ -101,8 +101,9 @@ export function Sidebar() {
   return (
     <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border">
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
-        <NavLink to="/app" className="text-xl font-semibold text-primary">
-          HireTrack
+        <NavLink to="/app" className="flex items-center gap-2">
+          <img src="/favicon.svg" alt="HireTrack" className="w-8 h-8" />
+          <span className="text-xl font-semibold text-primary">HireTrack</span>
         </NavLink>
       </div>
 

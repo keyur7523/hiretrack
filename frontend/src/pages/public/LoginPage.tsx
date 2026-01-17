@@ -35,7 +35,10 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface p-4">
       <div className="w-full max-w-md bg-background rounded-lg shadow-md p-8">
-        <h1 className="text-2xl font-semibold text-center text-primary mb-6">HireTrack</h1>
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <img src="/favicon.svg" alt="HireTrack" className="w-10 h-10" />
+          <h1 className="text-2xl font-semibold text-primary">HireTrack</h1>
+        </div>
         <h2 className="text-xl font-medium text-center mb-6">Sign In</h2>
         
         {apiError && <div className="mb-4 p-3 bg-danger-soft text-destructive rounded-md text-sm">{apiError}</div>}
