@@ -30,6 +30,17 @@ export function setGlobalErrorHandler(handler: (message: string) => void) {
 }
 
 function getAccessToken(): string | null {
+  // Try to get token from Zustand store first (persisted in localStorage under 'auth-storage')
+  const stored = localStorage.getItem('auth-storage');
+  if (stored) {
+    try {
+      const { state } = JSON.parse(stored);
+      if (state?.accessToken) return state.accessToken;
+    } catch {
+      // Fall through to legacy check
+    }
+  }
+  // Legacy fallback
   return localStorage.getItem('accessToken');
 }
 

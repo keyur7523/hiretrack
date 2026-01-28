@@ -97,7 +97,7 @@ export function AppRouter() {
           }
         />
         <Route
-          path="employer/jobs/new"
+          path="employer/jobs/create"
           element={
             <RoleRoute allowedRoles={['employer']}>
               <JobCreatePage />

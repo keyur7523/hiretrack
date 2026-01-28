@@ -1,57 +1,21 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import { setGlobalErrorHandler } from '@/api/client';
+import { showToast, useToast, type ToastType } from '@/hooks/useToast';
 
-export type ToastType = 'success' | 'error' | 'info' | 'warning';
+// Re-export types for backward compatibility
+export type { ToastType };
 
-export interface Toast {
-  id: string;
-  type: ToastType;
-  message: string;
+// Backward compatible hook
+export function useToastContext() {
+  return useToast();
 }
 
-interface ToastContextType {
-  toasts: Toast[];
-  showToast: (type: ToastType, message: string) => void;
-  removeToast: (id: string) => void;
-}
-
-const ToastContext = createContext<ToastContextType | null>(null);
-
-let toastId = 0;
-
+// Provider is now a no-op since Sonner's Toaster is in App.tsx
+// Kept for backward compatibility with existing imports
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+  useEffect(() => {
+    setGlobalErrorHandler((message) => showToast('error', message));
   }, []);
 
-  const showToast = useCallback((type: ToastType, message: string) => {
-    const id = String(++toastId);
-    setToasts((prev) => [...prev, { id, type, message }]);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      removeToast(id);
-    }, 5000);
-  }, [removeToast]);
-
-  // Set up global error handler
-  React.useEffect(() => {
-    setGlobalErrorHandler((message) => showToast('error', message));
-  }, [showToast]);
-
-  return (
-    <ToastContext.Provider value={{ toasts, showToast, removeToast }}>
-      {children}
-    </ToastContext.Provider>
-  );
-}
-
-export function useToastContext() {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToastContext must be used within a ToastProvider');
-  }
-  return context;
+  return <>{children}</>;
 }

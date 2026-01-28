@@ -73,7 +73,7 @@ export function EmployerJobsListPage() {
       title="Manage Jobs"
       actions={
         <Button asChild>
-          <Link to="/app/employer/jobs/new">Create Job</Link>
+          <Link to="/app/employer/jobs/create">Create Job</Link>
         </Button>
       }
     >
