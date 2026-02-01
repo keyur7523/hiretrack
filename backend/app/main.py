@@ -1,7 +1,11 @@
 import logging
+import os
 import time
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.config import get_settings
 from app.db import close_redis, init_redis
@@ -90,3 +94,22 @@ async def on_shutdown() -> None:
 
 
 app.include_router(api_router)
+
+# Serve frontend static files in production
+# The frontend build should be copied to backend/static/
+STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+
+if STATIC_DIR.exists():
+    # Serve static assets (js, css, images, etc.)
+    app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+
+    # Catch-all route for SPA - must be last
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve index.html for all non-API routes (SPA fallback)."""
+        # If the path looks like a file with extension, try to serve it
+        file_path = STATIC_DIR / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        # Otherwise serve index.html for client-side routing
+        return FileResponse(STATIC_DIR / "index.html")
