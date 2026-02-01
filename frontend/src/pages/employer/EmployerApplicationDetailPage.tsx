@@ -87,6 +87,17 @@ export function EmployerApplicationDetailPage() {
     return 'outline';
   };
 
+  // Valid status transitions based on backend rules
+  const validTransitions: Record<ApplicationStatus, ApplicationStatus[]> = {
+    applied: ['reviewed', 'rejected'],
+    reviewed: ['interview', 'rejected'],
+    interview: ['accepted', 'rejected'],
+    accepted: [],
+    rejected: [],
+  };
+
+  const availableStatuses = validTransitions[currentStatus] || [];
+
   return (
     <PageContainer title="Application Review">
       {isLoading && (
@@ -123,21 +134,27 @@ export function EmployerApplicationDetailPage() {
                   {formatApplicationStatus(details.application.status)}
                 </Badge>
               </div>
-              <div className="max-w-xs space-y-2">
-                <label className="text-sm font-medium">Update status</label>
-                <Select value={currentStatus} onValueChange={handleStatusChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="applied">Applied</SelectItem>
-                    <SelectItem value="reviewed">Reviewed</SelectItem>
-                    <SelectItem value="interview">Interview</SelectItem>
-                    <SelectItem value="accepted">Accepted</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {availableStatuses.length > 0 ? (
+                <div className="max-w-xs space-y-2">
+                  <label className="text-sm font-medium">Update status</label>
+                  <Select value="" onValueChange={handleStatusChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select next status..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableStatuses.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {formatApplicationStatus(status)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Status is final and cannot be changed.
+                </p>
+              )}
             </CardContent>
           </Card>
 
