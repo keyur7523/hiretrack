@@ -1,8 +1,11 @@
+import logging
 from datetime import timedelta
 from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.db import get_redis
 from app.models import Application, ApplicationStatus, Job, JobStatus, StatusHistory, User, UserRole
@@ -46,7 +49,7 @@ async def apply_for_job(
                 return cached_app
             # Cached ID not in DB, continue to create
     except Exception as e:
-        print(f"[WARN] Redis idempotency lookup failed: {type(e).__name__}: {e}")
+        logger.warning("Redis idempotency lookup failed: %s: %s", type(e).__name__, e)
         redis_available = False
 
     # STEP 3: DB uniqueness check (AFTER Redis)
@@ -92,7 +95,7 @@ async def apply_for_job(
         try:
             await redis_client.setex(key, int(timedelta(hours=24).total_seconds()), str(application.id))
         except Exception as e:
-            print(f"[WARN] Redis idempotency store failed: {type(e).__name__}: {e}")
+            logger.warning("Redis idempotency store failed: %s: %s", type(e).__name__, e)
 
     return application
 
