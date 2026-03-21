@@ -11,12 +11,24 @@ function buildQueryString(params: AuditLogFilters): string {
   return query ? `?${query}` : '';
 }
 
+export interface MetricsData {
+  total_requests: number;
+  error_requests: number;
+  application_submissions: number;
+  status_transitions: number;
+  queue_depth: number;
+  dlq_size: number;
+}
+
 export const adminApi = {
   health: () =>
     api.get<HealthCheck>('/admin/health'),
-  
+
   auditLogs: (filters: AuditLogFilters = {}) => {
     const query = buildQueryString(filters);
     return api.get<PaginatedResponse<AuditLog>>(`/admin/audit-logs${query}`);
   },
+
+  metrics: () =>
+    api.get<MetricsData>('/admin/metrics'),
 };

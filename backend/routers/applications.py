@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +17,8 @@ from app.services.applications import (
     list_applications,
     update_application_status,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/applications', tags=['applications'])
 
@@ -50,7 +54,7 @@ async def create_application(
     try:
         await enqueue('application.submitted', {'applicationId': str(application.id), 'jobId': str(application.job_id)})
     except Exception:
-        pass
+        logger.warning('Failed to enqueue application.submitted event for application %s', application.id, exc_info=True)
     return ApplicationResponse(
         id=application.id,
         jobId=application.job_id,
@@ -182,7 +186,7 @@ async def update_status(
             {'applicationId': str(updated.id), 'status': updated.status.value},
         )
     except Exception:
-        pass
+        logger.warning('Failed to enqueue application.status_changed event for application %s', updated.id, exc_info=True)
     return ApplicationResponse(
         id=updated.id,
         jobId=updated.job_id,

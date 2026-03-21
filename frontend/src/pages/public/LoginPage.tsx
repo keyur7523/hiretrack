@@ -60,9 +60,6 @@ export function LoginPage() {
         </form>
         
         <div className="mt-4 text-center text-sm">
-          <Link to="/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
-        </div>
-        <div className="mt-2 text-center text-sm">
           Don't have an account? <Link to="/register" className="text-primary hover:underline">Register</Link>
         </div>
       </div>

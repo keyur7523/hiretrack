@@ -6,7 +6,6 @@ import { AppLayout } from '@/components/layout/AppLayout';
 // Public pages
 import { LoginPage } from '@/pages/public/LoginPage';
 import { RegisterPage } from '@/pages/public/RegisterPage';
-import { ForgotPasswordPage } from '@/pages/public/ForgotPasswordPage';
 
 // Applicant pages
 import { JobsListPage } from '@/pages/applicant/JobsListPage';
@@ -24,6 +23,7 @@ import { EmployerApplicationDetailPage } from '@/pages/employer/EmployerApplicat
 // Admin pages
 import { AdminHealthPage } from '@/pages/admin/AdminHealthPage';
 import { AdminAuditLogsPage } from '@/pages/admin/AdminAuditLogsPage';
+import { AdminMetricsPage } from '@/pages/admin/AdminMetricsPage';
 
 // Common pages
 import { AccountPage } from '@/pages/common/AccountPage';
@@ -39,7 +39,7 @@ export function AppRouter() {
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
 
       {/* Protected routes */}
       <Route
@@ -143,6 +143,14 @@ export function AppRouter() {
           element={
             <RoleRoute allowedRoles={['admin']}>
               <AdminAuditLogsPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="admin/metrics"
+          element={
+            <RoleRoute allowedRoles={['admin']}>
+              <AdminMetricsPage />
             </RoleRoute>
           }
         />

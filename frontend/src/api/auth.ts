@@ -22,7 +22,7 @@ export const authApi = {
     api.post<LoginResponse>('/auth/login', data),
   
   register: (data: RegisterRequest) =>
-    api.post<{ message: string }>('/auth/register', data),
+    api.post<User>('/auth/register', data),
   
   me: () =>
     api.get<User>('/auth/me'),

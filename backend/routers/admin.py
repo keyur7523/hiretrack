@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,8 @@ from app.models import AuditLog, UserRole
 from app.queue import dlq_size, queue_depth
 from app.schemas import HealthComponent, HealthResponse, PaginatedResponse, AuditLogResponse
 from app.utils import paginate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/admin', tags=['admin'])
 
@@ -29,6 +33,7 @@ async def health_check(
         await session.execute(select(1))
         db_ok = True
     except Exception:
+        logger.warning('Database health check failed', exc_info=True)
         db_ok = False
     components.append(HealthComponent(name='db', status='ok' if db_ok else 'down'))
 
@@ -37,6 +42,7 @@ async def health_check(
         await redis_client.ping()
         redis_ok = True
     except Exception:
+        logger.warning('Redis health check failed', exc_info=True)
         redis_ok = False
     components.append(HealthComponent(name='redis', status='ok' if redis_ok else 'down'))
 
@@ -45,6 +51,7 @@ async def health_check(
             dlq_count = await dlq_size()
             queue_ok = dlq_count == 0
         except Exception:
+            logger.warning('Queue health check failed', exc_info=True)
             queue_ok = False
     components.append(
         HealthComponent(
@@ -98,6 +105,7 @@ async def metrics_endpoint(_user=Depends(require_roles(UserRole.admin))):
         data['queue_depth'] = await queue_depth()
         data['dlq_size'] = await dlq_size()
     except Exception:
+        logger.warning('Failed to fetch queue metrics', exc_info=True)
         data['queue_depth'] = 0
         data['dlq_size'] = 0
     return data
