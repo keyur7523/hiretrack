@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+import io
+from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, File, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -125,6 +126,38 @@ async def list_my_applications(
         for item in items
     ]
     return PaginatedResponse(items=response_items, page=page, pageSize=page_size, total=total)
+
+
+@router.post('/parse-resume')
+async def parse_resume(
+    file: UploadFile = File(...),
+    user: User = Depends(require_roles(UserRole.applicant)),
+):
+    """Extract text from an uploaded PDF resume."""
+    if not file.filename or not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Only PDF files are accepted')
+
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='File must be under 5MB')
+
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(contents))
+        text_parts = []
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text_parts.append(page_text)
+        text = '\n'.join(text_parts).strip()
+    except Exception as exc:
+        logger.warning('PDF parse failed: %s', exc)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail='Could not extract text from PDF') from exc
+
+    if not text:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail='No text found in PDF')
+
+    return {'text': text}
 
 
 @router.get('/{application_id}', response_model=ApplicationDetails)

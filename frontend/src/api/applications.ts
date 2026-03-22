@@ -20,6 +20,19 @@ function buildQueryString(params: ApplicationFilters): string {
   return query ? `?${query}` : '';
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+function getToken(): string | null {
+  const stored = localStorage.getItem('auth-storage');
+  if (stored) {
+    try {
+      const { state } = JSON.parse(stored);
+      if (state?.accessToken) return state.accessToken;
+    } catch { /* fall through */ }
+  }
+  return localStorage.getItem('accessToken');
+}
+
 export const applicationsApi = {
   // Applicant endpoints
   apply: (data: ApplicationFormData) => {
@@ -45,4 +58,20 @@ export const applicationsApi = {
   
   updateStatus: (applicationId: string, status: ApplicationStatus) =>
     api.patch<Application>(`/applications/${applicationId}/status`, { status }),
+
+  parseResume: async (file: File): Promise<{ text: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getToken();
+    const res = await fetch(`${API_BASE_URL}/applications/parse-resume`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw { status: res.status, message: err.detail || 'Failed to parse PDF' };
+    }
+    return res.json();
+  },
 };

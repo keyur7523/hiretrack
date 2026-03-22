@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { applicationsApi } from '@/api/applications';
 import { useToastContext } from '@/contexts/ToastContext';
 import type { Job } from '@/types';
 import { formatDate, formatEmploymentType } from '@/utils/format';
+import { Upload, FileText, Loader2, X } from 'lucide-react';
 
 export function JobDetailPage() {
   const { jobId } = useParams();
@@ -25,6 +26,9 @@ export function JobDetailPage() {
   const [coverLetter, setCoverLetter] = useState('');
   const [applyError, setApplyError] = useState('');
   const [isApplying, setIsApplying] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchJob = async () => {
     if (!jobId) return;
@@ -45,6 +49,39 @@ export function JobDetailPage() {
   useEffect(() => {
     fetchJob();
   }, [jobId]);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setApplyError('Only PDF files are accepted.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setApplyError('File must be under 5MB.');
+      return;
+    }
+    setSelectedFile(file);
+    setApplyError('');
+    setIsParsing(true);
+    try {
+      const result = await applicationsApi.parseResume(file);
+      setResumeText(result.text);
+      showToast('success', 'Resume text extracted from PDF.');
+    } catch (err: unknown) {
+      const message = (err as { message?: string })?.message || 'Could not extract text from PDF.';
+      setApplyError(message);
+      setSelectedFile(null);
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    setResumeText('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleApplySubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -130,12 +167,59 @@ export function JobDetailPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleApplySubmit} className="space-y-4">
+                {/* PDF Upload */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Upload Resume (PDF)</label>
+                  <div className="relative">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="resume-upload"
+                    />
+                    {!selectedFile ? (
+                      <label
+                        htmlFor="resume-upload"
+                        className="flex items-center justify-center gap-2 w-full rounded-md border-2 border-dashed border-border hover:border-primary/50 bg-surface p-4 cursor-pointer transition-colors text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Click to upload PDF resume</span>
+                      </label>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2.5">
+                        {isParsing ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                        ) : (
+                          <FileText className="w-4 h-4 text-primary" />
+                        )}
+                        <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
+                        {isParsing ? (
+                          <span className="text-xs text-muted-foreground">Extracting text...</span>
+                        ) : (
+                          <button type="button" onClick={clearFile} className="text-muted-foreground hover:text-foreground">
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative flex items-center gap-3">
+                  <div className="flex-1 border-t border-border" />
+                  <span className="text-xs text-muted-foreground">or paste manually</span>
+                  <div className="flex-1 border-t border-border" />
+                </div>
+
+                {/* Resume Text */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Resume Text</label>
                   <Textarea
                     value={resumeText}
                     onChange={(event) => setResumeText(event.target.value)}
-                    placeholder="Paste your resume text here"
+                    placeholder="Paste your resume text here or upload a PDF above"
                     required
                     rows={6}
                   />
