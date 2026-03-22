@@ -15,12 +15,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    screening_status = sa.Enum('pending', 'processing', 'completed', 'failed', name='screening_status', create_type=False)
-    screening_recommendation = sa.Enum('strong_match', 'good_match', 'partial_match', 'weak_match', name='screening_recommendation', create_type=False)
+    # Create enum types via raw SQL (IF NOT EXISTS handles re-runs)
+    op.execute("DO $$ BEGIN CREATE TYPE screening_status AS ENUM ('pending', 'processing', 'completed', 'failed'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
+    op.execute("DO $$ BEGIN CREATE TYPE screening_recommendation AS ENUM ('strong_match', 'good_match', 'partial_match', 'weak_match'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
 
-    # Create enum types first (checkfirst handles re-runs)
-    sa.Enum('pending', 'processing', 'completed', 'failed', name='screening_status').create(op.get_bind(), checkfirst=True)
-    sa.Enum('strong_match', 'good_match', 'partial_match', 'weak_match', name='screening_recommendation').create(op.get_bind(), checkfirst=True)
+    # Use postgresql.ENUM with create_type=False to reference existing enums
+    screening_status = postgresql.ENUM('pending', 'processing', 'completed', 'failed', name='screening_status', create_type=False)
+    screening_recommendation = postgresql.ENUM('strong_match', 'good_match', 'partial_match', 'weak_match', name='screening_recommendation', create_type=False)
 
     op.create_table(
         'ai_screenings',
@@ -42,5 +43,5 @@ def downgrade() -> None:
     op.drop_index('ix_ai_screenings_score')
     op.drop_index('ix_ai_screenings_application_id')
     op.drop_table('ai_screenings')
-    sa.Enum(name='screening_recommendation').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='screening_status').drop(op.get_bind(), checkfirst=True)
+    op.execute('DROP TYPE IF EXISTS screening_recommendation')
+    op.execute('DROP TYPE IF EXISTS screening_status')
