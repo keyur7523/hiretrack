@@ -15,11 +15,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    screening_status = sa.Enum('pending', 'processing', 'completed', 'failed', name='screening_status')
-    screening_recommendation = sa.Enum('strong_match', 'good_match', 'partial_match', 'weak_match', name='screening_recommendation')
+    screening_status = sa.Enum('pending', 'processing', 'completed', 'failed', name='screening_status', create_type=False)
+    screening_recommendation = sa.Enum('strong_match', 'good_match', 'partial_match', 'weak_match', name='screening_recommendation', create_type=False)
 
-    screening_status.create(op.get_bind(), checkfirst=True)
-    screening_recommendation.create(op.get_bind(), checkfirst=True)
+    # Create enum types first (checkfirst handles re-runs)
+    sa.Enum('pending', 'processing', 'completed', 'failed', name='screening_status').create(op.get_bind(), checkfirst=True)
+    sa.Enum('strong_match', 'good_match', 'partial_match', 'weak_match', name='screening_recommendation').create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         'ai_screenings',
