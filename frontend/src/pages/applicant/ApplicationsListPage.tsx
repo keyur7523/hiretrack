@@ -94,8 +94,8 @@ export function ApplicationsListPage() {
                   onClick={() => navigate(`/app/applications/${application.id}`)}
                 >
                   <TableCell>
-                    <div className="text-sm font-medium">Job</div>
-                    <div className="text-xs text-muted-foreground">{application.jobId}</div>
+                    <div className="text-sm font-medium">{(application as Record<string, unknown>).jobTitle as string || 'Untitled'}</div>
+                    <div className="text-xs text-muted-foreground">{(application as Record<string, unknown>).jobCompany as string || ''}</div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={statusVariant(application.status)}>

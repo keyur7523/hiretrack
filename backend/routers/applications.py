@@ -115,16 +115,26 @@ async def list_my_applications(
         page=page,
         page_size=pageSize,
     )
-    response_items = [
-        ApplicationResponse(
+    # Fetch job titles for all applications
+    job_ids = list({item.job_id for item in items})
+    jobs_map = {}
+    if job_ids:
+        jobs_result = (await session.execute(select(Job).where(Job.id.in_(job_ids)))).scalars().all()
+        jobs_map = {j.id: j for j in jobs_result}
+
+    response_items = []
+    for item in items:
+        job = jobs_map.get(item.job_id)
+        data = ApplicationResponse(
             id=item.id,
             jobId=item.job_id,
             applicantId=item.applicant_id,
             status=item.status,
             createdAt=item.created_at,
         ).model_dump(exclude_none=True)
-        for item in items
-    ]
+        data['jobTitle'] = job.title if job else None
+        data['jobCompany'] = job.company if job else None
+        response_items.append(data)
     return PaginatedResponse(items=response_items, page=page, pageSize=page_size, total=total)
 
 
@@ -304,6 +314,7 @@ async def update_status(
 @router.post('/admin/rescreen-pending', status_code=status.HTTP_200_OK)
 async def rescreen_pending_applications(
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(require_roles(UserRole.admin, UserRole.employer)),
 ):
     """Trigger AI screening for all pending applications. Temporary admin utility."""
     import asyncio

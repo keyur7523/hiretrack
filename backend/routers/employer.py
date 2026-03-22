@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status as http_status
-from sqlalchemy import cast, func, select, outerjoin, Date
+from sqlalchemy import cast, func, select, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -148,21 +148,28 @@ async def list_job_applications(
             page=page,
             page_size=pageSize,
         )
-        # Fetch screening scores for these items
+        # Fetch screening scores and applicant emails for these items
         app_ids = [item.id for item in items]
+        applicant_ids = list({item.applicant_id for item in items})
         screenings = {}
         if app_ids:
             stmt = select(AIScreening).where(AIScreening.application_id.in_(app_ids))
             results = (await session.execute(stmt)).scalars().all()
             screenings = {s.application_id: s for s in results}
+        users_map = {}
+        if applicant_ids:
+            users_result = (await session.execute(select(User).where(User.id.in_(applicant_ids)))).scalars().all()
+            users_map = {u.id: u for u in users_result}
 
         response_items = []
         for item in items:
             s = screenings.get(item.id)
+            u = users_map.get(item.applicant_id)
             response_items.append({
                 'id': str(item.id),
                 'jobId': str(item.job_id),
                 'applicantId': str(item.applicant_id),
+                'applicantEmail': u.email if u else None,
                 'status': item.status.value,
                 'createdAt': item.created_at.isoformat(),
                 'aiScreeningScore': s.score if s else None,
@@ -185,7 +192,6 @@ async def list_job_applications(
         base_query = base_query.where(AIScreening.score >= min_score)
 
     # Count
-    from sqlalchemy import func
     count_query = select(func.count()).select_from(base_query.subquery())
     total = (await session.execute(count_query)).scalar() or 0
 
@@ -198,12 +204,21 @@ async def list_job_applications(
     base_query = base_query.offset(offset).limit(ps)
     rows = (await session.execute(base_query)).all()
 
+    # Fetch applicant emails
+    row_applicant_ids = list({app.applicant_id for app, _ in rows})
+    users_map2 = {}
+    if row_applicant_ids:
+        users_result2 = (await session.execute(select(User).where(User.id.in_(row_applicant_ids)))).scalars().all()
+        users_map2 = {u.id: u for u in users_result2}
+
     response_items = []
     for app, screening in rows:
+        u = users_map2.get(app.applicant_id)
         response_items.append({
             'id': str(app.id),
             'jobId': str(app.job_id),
             'applicantId': str(app.applicant_id),
+            'applicantEmail': u.email if u else None,
             'status': app.status.value,
             'createdAt': app.created_at.isoformat(),
             'aiScreeningScore': screening.score if screening else None,

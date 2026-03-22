@@ -113,6 +113,15 @@ export interface HealthCheck {
   components: HealthComponent[];
 }
 
+export interface MetricsData {
+  total_requests: number;
+  error_requests: number;
+  application_submissions: number;
+  status_transitions: number;
+  queue_depth: number;
+  dlq_size: number;
+}
+
 export interface AuditLog {
   id: string;
   actorId: string;

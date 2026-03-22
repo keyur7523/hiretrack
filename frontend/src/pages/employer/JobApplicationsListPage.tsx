@@ -159,7 +159,7 @@ export function JobApplicationsListPage() {
                 {applications.map((application) => (
                   <TableRow key={application.id}>
                     <TableCell className="text-sm font-medium">
-                      {application.applicantId}
+                      {(application as Record<string, unknown>).applicantEmail as string || application.applicantId.slice(0, 8) + '...'}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusVariant(application.status)}>

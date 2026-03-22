@@ -43,6 +43,4 @@ export const shortcuts: Shortcut[] = [
   { keys: '⌘ B', description: 'Toggle sidebar' },
   { keys: '⌘ /', description: 'Show keyboard shortcuts' },
   { keys: 'Esc', description: 'Close modals' },
-  { keys: 'j / k', description: 'Navigate lists' },
-  { keys: 'Enter', description: 'Select item' },
 ];

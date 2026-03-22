@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 interface ApiError {
   status: number;
@@ -29,7 +29,7 @@ export function setGlobalErrorHandler(handler: (message: string) => void) {
   globalErrorHandler = handler;
 }
 
-function getAccessToken(): string | null {
+export function getAccessToken(): string | null {
   // Try to get token from Zustand store first (persisted in localStorage under 'auth-storage')
   const stored = localStorage.getItem('auth-storage');
   if (stored) {

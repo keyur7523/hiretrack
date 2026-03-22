@@ -448,7 +448,7 @@ export function LandingPage() {
             <span className="text-[13px] text-muted-foreground">
               Built by{' '}
               <a
-                href="https://x.com/AnotherPers0n7"
+                href="https://x.com/keyur_pawa13430"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-foreground hover:text-primary transition-colors"
@@ -467,7 +467,7 @@ export function LandingPage() {
               GitHub
             </a>
             <a
-              href="https://x.com/AnotherPers0n7"
+              href="https://x.com/keyur_pawa13430"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[13px] text-muted-foreground hover:text-foreground transition-colors"

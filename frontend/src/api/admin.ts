@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { HealthCheck, AuditLog, AuditLogFilters, PaginatedResponse } from '@/types';
+import type { HealthCheck, AuditLog, AuditLogFilters, MetricsData, PaginatedResponse } from '@/types';
 
 function buildQueryString(params: AuditLogFilters): string {
   const searchParams = new URLSearchParams();
@@ -9,15 +9,6 @@ function buildQueryString(params: AuditLogFilters): string {
   if (params.pageSize !== undefined) searchParams.append('pageSize', String(params.pageSize));
   const query = searchParams.toString();
   return query ? `?${query}` : '';
-}
-
-export interface MetricsData {
-  total_requests: number;
-  error_requests: number;
-  application_submissions: number;
-  status_transitions: number;
-  queue_depth: number;
-  dlq_size: number;
 }
 
 export const adminApi = {

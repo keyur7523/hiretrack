@@ -3,7 +3,8 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { adminApi, type MetricsData } from '@/api/admin';
+import { adminApi } from '@/api/admin';
+import type { MetricsData } from '@/types';
 import { useToastContext } from '@/contexts/ToastContext';
 
 const metricLabels: Record<string, string> = {

@@ -1,6 +1,8 @@
+import asyncio
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,8 +20,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
-
-app = FastAPI(title='HireTrack API')
 
 origins = [origin.strip() for origin in settings.cors_origins.split(',') if origin.strip()]
 app.add_middleware(
@@ -82,12 +82,12 @@ def run_migrations():
         logger.error(f"Migration error: {e}")
 
 
-@app.on_event('startup')
-async def on_startup() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
     run_migrations()
     init_redis()
     # Start background worker only if Redis is available
-    import asyncio
     try:
         from app.db import get_redis
         redis_client = get_redis()
@@ -103,12 +103,12 @@ async def on_startup() -> None:
         logger.info('Background worker started (Redis available)')
     except Exception:
         logger.warning('Redis unavailable — background worker disabled. AI screening runs inline.')
-
-
-@app.on_event('shutdown')
-async def on_shutdown() -> None:
+    yield
+    # Shutdown
     await close_redis()
 
+
+app.router.lifespan_context = lifespan
 
 app.include_router(api_router)
 
