@@ -21,6 +21,34 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    run_migrations()
+    init_redis()
+    try:
+        from app.db import get_redis
+        redis_client = get_redis()
+        await redis_client.ping()
+        from app.worker import process_once
+        async def _worker_loop():
+            while True:
+                try:
+                    await process_once()
+                except Exception:
+                    await asyncio.sleep(30)
+        asyncio.create_task(_worker_loop())
+        logger.info('Background worker started (Redis available)')
+    except Exception:
+        logger.warning('Redis unavailable — background worker disabled. AI screening runs inline.')
+    yield
+    # Shutdown
+    await close_redis()
+
+
+app = FastAPI(title='HireTrack API', lifespan=lifespan)
+
 origins = [origin.strip() for origin in settings.cors_origins.split(',') if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
@@ -81,34 +109,6 @@ def run_migrations():
     except Exception as e:
         logger.error(f"Migration error: {e}")
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    run_migrations()
-    init_redis()
-    # Start background worker only if Redis is available
-    try:
-        from app.db import get_redis
-        redis_client = get_redis()
-        await redis_client.ping()
-        from app.worker import process_once
-        async def _worker_loop():
-            while True:
-                try:
-                    await process_once()
-                except Exception:
-                    await asyncio.sleep(30)
-        asyncio.create_task(_worker_loop())
-        logger.info('Background worker started (Redis available)')
-    except Exception:
-        logger.warning('Redis unavailable — background worker disabled. AI screening runs inline.')
-    yield
-    # Shutdown
-    await close_redis()
-
-
-app.router.lifespan_context = lifespan
 
 app.include_router(api_router)
 
