@@ -67,15 +67,17 @@ async def create_application(
     except Exception:
         logger.warning('Failed to enqueue application.submitted event for application %s', application.id, exc_info=True)
 
-    # Enqueue AI screening if enabled
+    # Enqueue AI screening if enabled (must not break application creation)
     settings = get_settings()
     if settings.ai_screening_enabled and settings.ai_api_key:
         try:
-            screening = AIScreening(application_id=application.id, status=ScreeningStatus.pending)
-            session.add(screening)
+            async with session.begin_nested():
+                screening = AIScreening(application_id=application.id, status=ScreeningStatus.pending)
+                session.add(screening)
             await session.commit()
             await enqueue('application.screen_resume', {'applicationId': str(application.id), 'jobId': str(application.job_id)})
         except Exception:
+            await session.rollback()
             logger.warning('Failed to enqueue AI screening for application %s', application.id, exc_info=True)
 
     return ApplicationResponse(
@@ -152,8 +154,12 @@ async def get_application_details(
         for item in history_rows
     ]
 
-    # Load AI screening data
-    screening = await get_screening_for_application(session, application.id)
+    # Load AI screening data (gracefully handle missing table)
+    screening = None
+    try:
+        screening = await get_screening_for_application(session, application.id)
+    except Exception:
+        logger.warning('Failed to load AI screening for application %s', application.id, exc_info=True)
     ai_screening_data = None
     if screening:
         if user.role in (UserRole.employer, UserRole.admin):
