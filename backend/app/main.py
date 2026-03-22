@@ -86,6 +86,18 @@ def run_migrations():
 async def on_startup() -> None:
     run_migrations()
     init_redis()
+    # Start background worker for queue processing (AI screening, etc.)
+    import asyncio
+    from app.worker import process_once
+    async def _worker_loop():
+        while True:
+            try:
+                await process_once()
+            except Exception:
+                logger.warning('Worker loop error', exc_info=True)
+                await asyncio.sleep(5)
+    asyncio.create_task(_worker_loop())
+    logger.info('Background worker started')
 
 
 @app.on_event('shutdown')
