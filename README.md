@@ -94,6 +94,18 @@ Every application is automatically analyzed against the job description. The sys
 
 Employers see the full report. Applicants see score + recommendation only (role-gated response).
 
+### PDF Resume Upload
+Applicants can upload a PDF resume instead of pasting text. The backend extracts text server-side using `pypdf`, previews it in an editable textarea, then submits normally. No file storage needed — clean separation of concerns.
+
+### Employer Analytics Dashboard
+Real-time dashboard with four charts powered by Recharts:
+- **Applications over time** — area chart showing submission trends
+- **Status breakdown** — donut chart (applied / reviewed / interview / accepted / rejected)
+- **AI score distribution** — bar chart bucketed by score range (0-20, 21-40, etc.)
+- **Top jobs by applications** — horizontal bar chart ranking jobs
+
+Plus summary cards: total jobs, total applications, average AI score, acceptance rate.
+
 ### Role-Based Access Control
 Three roles with enforced boundaries at every layer:
 
@@ -111,12 +123,19 @@ applied ──▶ reviewed ──▶ interview ──▶ accepted
 ```
 Invalid transitions return 409 Conflict. Every transition is logged with actor, timestamp, and previous state.
 
+### Landing Page
+Custom-designed landing page with Inter font, scroll animations (Framer Motion), AI screening showcase with real scores, feature grid, tech stack display, role breakdown, and demo credentials — consistent with the app's light design system.
+
+### Dark Mode
+Full light/dark/system theme support via Zustand-persisted theme store. All UI components use HSL CSS variables that swap between modes. Toggle in the header nav.
+
 ### Production Patterns
-- **Idempotent submissions** — same user + same job = one application, enforced at DB level
+- **Idempotent submissions** — same user + same job = one application, enforced at DB level + friendly "already applied" detection with link to existing application
 - **Structured audit trail** — every mutation logged with actor ID, action, entity, timestamp, metadata
-- **Background processing** — async task queue for AI screening (graceful degradation if unavailable)
+- **Background processing** — async task queue for AI screening (graceful degradation if Redis unavailable)
 - **Auto-migrations** — Alembic runs on server startup, zero manual steps
 - **Error boundaries** — frontend global error handling, backend structured error responses
+- **Graceful degradation** — app works fully without Redis (AI screening runs inline, caching disabled)
 
 ---
 
@@ -132,6 +151,7 @@ Invalid transitions return 409 Conflict. Every transition is logged with actor, 
 | shadcn/ui | Component library (Radix primitives) |
 | Zustand 5 | State management (auth store, UI store) |
 | Framer Motion 12 | Page transitions and scroll animations |
+| Recharts 2 | Analytics dashboard charts (area, pie, bar) |
 | React Router 6 | Client-side routing with role guards |
 
 ### Backend
@@ -145,6 +165,7 @@ Invalid transitions return 409 Conflict. Every transition is logged with actor, 
 | python-jose | JWT token creation and verification |
 | bcrypt | Password hashing |
 | Anthropic + OpenAI SDKs | Dual-provider AI screening |
+| pypdf | Server-side PDF text extraction |
 
 ### Infrastructure
 | Service | Purpose |
@@ -178,10 +199,16 @@ Invalid transitions return 409 Conflict. Every transition is logged with actor, 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | POST | `/applications` | Apply to job (idempotent, triggers AI screening) | Applicant |
+| POST | `/applications/parse-resume` | Upload PDF, extract text server-side (multipart) | Applicant |
 | GET | `/applications` | List my applications | Applicant |
 | GET | `/applications/{id}` | Detail + status history + AI screening (role-gated) | Bearer |
 | PATCH | `/applications/{id}/status` | Advance candidate status | Employer |
-| GET | `/employer/jobs/{id}/applications` | List applications for a job (with AI scores, sort, filter) | Employer |
+
+### Employer
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/employer/jobs/{id}/applications` | List applications with AI scores, sort, filter | Employer |
+| GET | `/employer/analytics` | Dashboard data (summary, charts, top jobs) | Employer |
 
 ### Admin
 | Method | Endpoint | Description | Auth |
@@ -291,8 +318,8 @@ hiretrack/
 │   │   │   └── ui/              # shadcn/ui components
 │   │   ├── pages/
 │   │   │   ├── public/          # LandingPage, LoginPage, RegisterPage
-│   │   │   ├── applicant/       # Jobs, JobDetail, Applications, ApplicationDetail
-│   │   │   ├── employer/        # ManageJobs, CreateJob, EditJob, ReviewApplications
+│   │   │   ├── applicant/       # Jobs, JobDetail (PDF upload), Applications, ApplicationDetail
+│   │   │   ├── employer/        # Dashboard (charts), ManageJobs, CreateJob, EditJob, ReviewApplications
 │   │   │   ├── admin/           # Health, Metrics, AuditLogs
 │   │   │   └── common/          # Account, Unauthorized, NotFound
 │   │   ├── routes/              # Router + ProtectedRoute + RoleRoute
@@ -316,6 +343,9 @@ hiretrack/
 | **Inline background tasks** | Runs AI screening as asyncio tasks in the web process — avoids needing a separate worker service on free tier |
 | **Status machine** | Explicit transition rules prevent invalid state changes, every transition audited |
 | **Idempotency** | Header-based idempotency key + DB unique constraint prevents duplicate applications |
+| **Server-side PDF parsing** | Extract text on backend (not client-side JS) — more reliable, works with all PDFs, no WASM overhead |
+| **Graceful Redis degradation** | App detects Redis availability at startup, disables worker/cache if unavailable, runs AI screening inline |
+| **Single analytics endpoint** | One `/employer/analytics` call returns all dashboard data — avoids waterfall of 5 separate requests |
 
 ---
 
