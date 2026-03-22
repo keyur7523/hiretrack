@@ -5,18 +5,29 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
+from app.config import get_settings
 from app.db import get_session
 from app.deps import get_current_user, require_roles
-from app.models import Application, Job, User, UserRole, StatusHistory
+from app.models import AIScreening, Application, Job, ScreeningStatus, User, UserRole, StatusHistory
 from app.metrics import increment
 from app.queue import enqueue
-from app.schemas import ApplicationCreate, ApplicationDetails, ApplicationResponse, ApplicationStatusUpdate, PaginatedResponse
+from app.schemas import (
+    AIScreeningResult,
+    AIScreeningSkillsMatch,
+    AIScreeningSummary,
+    ApplicationCreate,
+    ApplicationDetails,
+    ApplicationResponse,
+    ApplicationStatusUpdate,
+    PaginatedResponse,
+)
 from app.services.applications import (
     apply_for_job,
     ensure_employer_application_access,
     list_applications,
     update_application_status,
 )
+from app.services.screening import get_screening_for_application
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +66,18 @@ async def create_application(
         await enqueue('application.submitted', {'applicationId': str(application.id), 'jobId': str(application.job_id)})
     except Exception:
         logger.warning('Failed to enqueue application.submitted event for application %s', application.id, exc_info=True)
+
+    # Enqueue AI screening if enabled
+    settings = get_settings()
+    if settings.ai_screening_enabled and settings.ai_api_key:
+        try:
+            screening = AIScreening(application_id=application.id, status=ScreeningStatus.pending)
+            session.add(screening)
+            await session.commit()
+            await enqueue('application.screen_resume', {'applicationId': str(application.id), 'jobId': str(application.job_id)})
+        except Exception:
+            logger.warning('Failed to enqueue AI screening for application %s', application.id, exc_info=True)
+
     return ApplicationResponse(
         id=application.id,
         jobId=application.job_id,
@@ -129,6 +152,38 @@ async def get_application_details(
         for item in history_rows
     ]
 
+    # Load AI screening data
+    screening = await get_screening_for_application(session, application.id)
+    ai_screening_data = None
+    if screening:
+        if user.role in (UserRole.employer, UserRole.admin):
+            # Full result for employer/admin
+            skills_match = None
+            if screening.result and 'skills_match' in screening.result:
+                sm = screening.result['skills_match']
+                skills_match = AIScreeningSkillsMatch(
+                    matched=sm.get('matched', []),
+                    missing=sm.get('missing', []),
+                    bonus=sm.get('bonus', []),
+                )
+            ai_screening_data = AIScreeningResult(
+                status=screening.status.value,
+                score=screening.score,
+                recommendation=screening.recommendation.value if screening.recommendation else None,
+                skillsMatch=skills_match,
+                experienceAssessment=screening.result.get('experience_assessment') if screening.result else None,
+                strengths=screening.result.get('strengths') if screening.result else None,
+                concerns=screening.result.get('concerns') if screening.result else None,
+                completedAt=screening.completed_at,
+            )
+        else:
+            # Summary only for applicant
+            ai_screening_data = AIScreeningSummary(
+                status=screening.status.value,
+                score=screening.score,
+                recommendation=screening.recommendation.value if screening.recommendation else None,
+            )
+
     response = {
         'application': {
             'id': application.id,
@@ -146,6 +201,7 @@ async def get_application_details(
             'location': job.location,
         },
         'statusHistory': status_history,
+        'aiScreening': ai_screening_data.model_dump() if ai_screening_data else None,
     }
     return response
 

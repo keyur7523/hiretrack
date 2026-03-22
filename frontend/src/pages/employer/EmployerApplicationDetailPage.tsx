@@ -18,7 +18,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { applicationsApi } from '@/api/applications';
 import { useToastContext } from '@/contexts/ToastContext';
-import type { ApplicationDetails, ApplicationStatus } from '@/types';
+import { AIScreeningCard } from '@/components/screening/AIScreeningCard';
+import type { ApplicationDetails, ApplicationStatus, AIScreeningResult } from '@/types';
 import { formatApplicationStatus, formatDateTime } from '@/utils/format';
 
 export function EmployerApplicationDetailPage() {
@@ -157,6 +158,10 @@ export function EmployerApplicationDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {details.aiScreening && (
+            <AIScreeningCard screening={details.aiScreening as AIScreeningResult} />
+          )}
 
           <Card>
             <CardContent className="space-y-4 p-6">

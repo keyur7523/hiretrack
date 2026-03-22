@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import SessionLocal
 from app.queue import dequeue, push_dlq, requeue
 from app.services.audit import create_audit_log
+from app.services.screening import run_screening
 
 logger = logging.getLogger('hiretrack.worker')
 
@@ -40,9 +41,27 @@ async def handle_application_status_changed(session: AsyncSession, payload: dict
     logger.info({'message': 'notification.simulated', 'type': 'application.status_changed', 'payload': payload})
 
 
+async def handle_screen_resume(session: AsyncSession, payload: dict[str, Any]) -> None:
+    from uuid import UUID
+    application_id = payload.get('applicationId')
+    if not application_id:
+        raise ValueError('Missing applicationId in screen_resume payload')
+    await run_screening(session, UUID(application_id))
+    await create_audit_log(
+        session,
+        actor_id=None,
+        action='application.ai_screened',
+        entity_type='application',
+        entity_id=application_id,
+        metadata={'applicationId': application_id, 'async': True},
+    )
+    logger.info({'message': 'screening.task.completed', 'applicationId': application_id})
+
+
 TASK_HANDLERS: dict[str, Callable[[AsyncSession, dict[str, Any]], Any]] = {
     'application.submitted': handle_application_submitted,
     'application.status_changed': handle_application_status_changed,
+    'application.screen_resume': handle_screen_resume,
 }
 
 

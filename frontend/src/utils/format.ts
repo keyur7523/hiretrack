@@ -43,3 +43,23 @@ export function formatApplicationStatus(status: string): string {
   };
   return map[status] || status;
 }
+
+export function formatRecommendation(recommendation: string): string {
+  const map: Record<string, string> = {
+    strong_match: 'Strong Match',
+    good_match: 'Good Match',
+    partial_match: 'Partial Match',
+    weak_match: 'Weak Match',
+  };
+  return map[recommendation] || recommendation;
+}
+
+export function formatScreeningStatus(status: string): string {
+  const map: Record<string, string> = {
+    pending: 'Pending',
+    processing: 'Analyzing...',
+    completed: 'Completed',
+    failed: 'Failed',
+  };
+  return map[status] || status;
+}

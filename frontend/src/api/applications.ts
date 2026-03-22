@@ -14,6 +14,8 @@ function buildQueryString(params: ApplicationFilters): string {
   if (params.status) searchParams.append('status', params.status);
   if (params.page !== undefined) searchParams.append('page', String(params.page));
   if (params.pageSize !== undefined) searchParams.append('pageSize', String(params.pageSize));
+  if (params.sortBy) searchParams.append('sortBy', params.sortBy);
+  if (params.minScore !== undefined) searchParams.append('minScore', String(params.minScore));
   const query = searchParams.toString();
   return query ? `?${query}` : '';
 }

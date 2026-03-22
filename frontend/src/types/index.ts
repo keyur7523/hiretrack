@@ -49,6 +49,8 @@ export interface Application {
   applicantId: string;
   status: ApplicationStatus;
   createdAt: string;
+  aiScreeningScore?: number | null;
+  aiScreeningStatus?: ScreeningStatus | null;
 }
 
 export interface StatusChange {
@@ -57,10 +59,38 @@ export interface StatusChange {
   changedBy: string;
 }
 
+// AI Screening Types
+export type ScreeningStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ScreeningRecommendation = 'strong_match' | 'good_match' | 'partial_match' | 'weak_match';
+
+export interface AIScreeningSkillsMatch {
+  matched: string[];
+  missing: string[];
+  bonus: string[];
+}
+
+export interface AIScreeningResult {
+  status: ScreeningStatus;
+  score: number | null;
+  recommendation: ScreeningRecommendation | null;
+  skillsMatch: AIScreeningSkillsMatch | null;
+  experienceAssessment: string | null;
+  strengths: string[] | null;
+  concerns: string[] | null;
+  completedAt: string | null;
+}
+
+export interface AIScreeningSummary {
+  status: ScreeningStatus;
+  score: number | null;
+  recommendation: ScreeningRecommendation | null;
+}
+
 export interface ApplicationDetails {
   application: Application & { resumeText?: string; coverLetter?: string };
   job: Pick<Job, 'id' | 'title' | 'company' | 'location'>;
   statusHistory: StatusChange[];
+  aiScreening?: AIScreeningResult | AIScreeningSummary | null;
 }
 
 export interface ApplicationFormData {
@@ -115,6 +145,8 @@ export interface JobFilters extends PaginationParams {
 
 export interface ApplicationFilters extends PaginationParams {
   status?: ApplicationStatus;
+  sortBy?: 'created_at' | 'ai_score';
+  minScore?: number;
 }
 
 export interface AuditLogFilters extends PaginationParams {

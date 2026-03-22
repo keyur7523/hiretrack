@@ -7,10 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { applicationsApi } from '@/api/applications';
 import { useToastContext } from '@/contexts/ToastContext';
 import type { Application, ApplicationStatus } from '@/types';
-import { formatApplicationStatus, formatDate } from '@/utils/format';
+import { formatApplicationStatus, formatDate, formatScreeningStatus } from '@/utils/format';
 
 export function JobApplicationsListPage() {
   const { jobId } = useParams();
@@ -21,6 +23,8 @@ export function JobApplicationsListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
+  const [sortBy, setSortBy] = useState<'created_at' | 'ai_score'>('created_at');
+  const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -35,6 +39,8 @@ export function JobApplicationsListPage() {
         status: status === 'all' ? undefined : status,
         page,
         pageSize,
+        sortBy,
+        minScore,
       });
       setApplications(response.items);
       setTotal(response.total);
@@ -51,7 +57,7 @@ export function JobApplicationsListPage() {
 
   useEffect(() => {
     fetchApplications();
-  }, [jobId, status, page, pageSize]);
+  }, [jobId, status, page, pageSize, sortBy, minScore]);
 
   const statusVariant = (value: ApplicationStatus) => {
     if (value === 'accepted') return 'default';
@@ -77,6 +83,39 @@ export function JobApplicationsListPage() {
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
             </TabsList>
           </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardContent className="p-4 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium whitespace-nowrap">Sort by</label>
+            <Select value={sortBy} onValueChange={(v) => { setSortBy(v as typeof sortBy); setPage(1); }}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at">Date Applied</SelectItem>
+                <SelectItem value="ai_score">AI Score</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium whitespace-nowrap">Min AI Score</label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              placeholder="0"
+              className="w-[80px]"
+              value={minScore ?? ''}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : undefined;
+                setMinScore(val);
+                setPage(1);
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -111,6 +150,7 @@ export function JobApplicationsListPage() {
                 <TableRow>
                   <TableHead>Applicant</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>AI Score</TableHead>
                   <TableHead>Applied</TableHead>
                   <TableHead className="text-right">Details</TableHead>
                 </TableRow>
@@ -125,6 +165,28 @@ export function JobApplicationsListPage() {
                       <Badge variant={statusVariant(application.status)}>
                         {formatApplicationStatus(application.status)}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {application.aiScreeningStatus === 'completed' && application.aiScreeningScore != null ? (
+                        <Badge
+                          variant="outline"
+                          className={
+                            application.aiScreeningScore >= 70
+                              ? 'border-emerald-200 text-emerald-700 bg-emerald-50'
+                              : application.aiScreeningScore >= 40
+                              ? 'border-amber-200 text-amber-700 bg-amber-50'
+                              : 'border-red-200 text-red-700 bg-red-50'
+                          }
+                        >
+                          {application.aiScreeningScore}
+                        </Badge>
+                      ) : application.aiScreeningStatus ? (
+                        <span className="text-xs text-muted-foreground">
+                          {formatScreeningStatus(application.aiScreeningStatus)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(application.createdAt)}

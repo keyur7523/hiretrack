@@ -7,7 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { applicationsApi } from '@/api/applications';
 import { useToastContext } from '@/contexts/ToastContext';
-import type { ApplicationDetails } from '@/types';
+import { AIScreeningSummaryCard } from '@/components/screening/AIScreeningSummaryCard';
+import type { ApplicationDetails, AIScreeningSummary } from '@/types';
 import { formatApplicationStatus, formatDateTime } from '@/utils/format';
 
 export function ApplicationDetailPage() {
@@ -83,6 +84,10 @@ export function ApplicationDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {details.aiScreening && (
+            <AIScreeningSummaryCard screening={details.aiScreening as AIScreeningSummary} />
+          )}
 
           <Card>
             <CardContent className="space-y-4 p-6">

@@ -99,10 +99,35 @@ class ApplicationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
+class AIScreeningSkillsMatch(BaseModel):
+    matched: list[str] = []
+    missing: list[str] = []
+    bonus: list[str] = []
+
+
+class AIScreeningResult(BaseModel):
+    status: str
+    score: int | None = None
+    recommendation: str | None = None
+    skillsMatch: AIScreeningSkillsMatch | None = None
+    experienceAssessment: str | None = None
+    strengths: list[str] | None = None
+    concerns: list[str] | None = None
+    completedAt: datetime | None = None
+
+
+class AIScreeningSummary(BaseModel):
+    """Simplified version for applicant view — score and recommendation only."""
+    status: str
+    score: int | None = None
+    recommendation: str | None = None
+
+
 class ApplicationDetails(BaseModel):
     application: ApplicationResponse
     job: dict[str, Any]
     statusHistory: list[dict[str, Any]]
+    aiScreening: AIScreeningResult | AIScreeningSummary | None = None
 
 
 class ApplicationStatusUpdate(BaseModel):
