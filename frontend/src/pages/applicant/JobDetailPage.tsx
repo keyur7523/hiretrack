@@ -12,7 +12,7 @@ import { applicationsApi } from '@/api/applications';
 import { useToastContext } from '@/contexts/ToastContext';
 import type { Job } from '@/types';
 import { formatDate, formatEmploymentType } from '@/utils/format';
-import { Upload, FileText, Loader2, X } from 'lucide-react';
+import { Upload, FileText, Loader2, X, CheckCircle } from 'lucide-react';
 
 export function JobDetailPage() {
   const { jobId } = useParams();
@@ -28,6 +28,8 @@ export function JobDetailPage() {
   const [isApplying, setIsApplying] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [existingApplicationId, setExistingApplicationId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchJob = async () => {
@@ -48,6 +50,16 @@ export function JobDetailPage() {
 
   useEffect(() => {
     fetchJob();
+    // Check if already applied
+    if (jobId) {
+      applicationsApi.listMine({ pageSize: 100 }).then((res) => {
+        const existing = res.items.find((a) => a.jobId === jobId);
+        if (existing) {
+          setAlreadyApplied(true);
+          setExistingApplicationId(existing.id);
+        }
+      }).catch(() => {});
+    }
   }, [jobId]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,6 +114,13 @@ export function JobDetailPage() {
       setIsApplyOpen(false);
       navigate(`/app/applications/${response.id}`);
     } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      if (status === 409) {
+        setAlreadyApplied(true);
+        setIsApplyOpen(false);
+        showToast('info', 'You have already applied to this job.');
+        return;
+      }
       const message = (err as { message?: string })?.message || 'Failed to submit application.';
       setApplyError(message);
       showToast('error', message);
@@ -155,10 +174,26 @@ export function JobDetailPage() {
             </CardContent>
           </Card>
 
+          {alreadyApplied && (
+            <div className="rounded-lg border border-primary/30 bg-primary-soft p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <CheckCircle className="w-4 h-4 text-primary" />
+                <span>You have already applied to this job.</span>
+              </div>
+              {existingApplicationId && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/app/applications/${existingApplicationId}`)}>
+                  View Application
+                </Button>
+              )}
+            </div>
+          )}
+
           <Dialog open={isApplyOpen} onOpenChange={setIsApplyOpen}>
-            <DialogTrigger asChild>
-              <Button>Apply for this job</Button>
-            </DialogTrigger>
+            {!alreadyApplied && (
+              <DialogTrigger asChild>
+                <Button>Apply for this job</Button>
+              </DialogTrigger>
+            )}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Apply to {job.title}</DialogTitle>
