@@ -67,18 +67,28 @@ async def create_application(
     except Exception:
         logger.warning('Failed to enqueue application.submitted event for application %s', application.id, exc_info=True)
 
-    # Enqueue AI screening if enabled (must not break application creation)
+    # Run AI screening inline (fire-and-forget background task)
     settings = get_settings()
     if settings.ai_screening_enabled and settings.ai_api_key:
-        try:
-            async with session.begin_nested():
-                screening = AIScreening(application_id=application.id, status=ScreeningStatus.pending)
-                session.add(screening)
-            await session.commit()
-            await enqueue('application.screen_resume', {'applicationId': str(application.id), 'jobId': str(application.job_id)})
-        except Exception:
-            await session.rollback()
-            logger.warning('Failed to enqueue AI screening for application %s', application.id, exc_info=True)
+        import asyncio
+        from app.services.screening import run_screening
+
+        async def _run_screening_bg(app_id):
+            from app.db import SessionLocal
+            try:
+                async with SessionLocal() as bg_session:
+                    # Create screening record
+                    screening = AIScreening(application_id=app_id, status=ScreeningStatus.pending)
+                    bg_session.add(screening)
+                    await bg_session.commit()
+                    # Run the actual screening
+                    await run_screening(bg_session, app_id)
+                    await bg_session.commit()
+                    logger.info('AI screening completed for application %s', app_id)
+            except Exception:
+                logger.warning('AI screening failed for application %s', app_id, exc_info=True)
+
+        asyncio.create_task(_run_screening_bg(application.id))
 
     return ApplicationResponse(
         id=application.id,
@@ -256,3 +266,36 @@ async def update_status(
         status=updated.status,
         createdAt=updated.created_at,
     )
+
+
+@router.post('/admin/rescreen-pending', status_code=status.HTTP_200_OK)
+async def rescreen_pending_applications(
+    session: AsyncSession = Depends(get_session),
+):
+    """Trigger AI screening for all pending applications. Temporary admin utility."""
+    import asyncio
+    from app.services.screening import run_screening
+    from app.db import SessionLocal
+
+    settings = get_settings()
+    if not settings.ai_screening_enabled or not settings.ai_api_key:
+        raise HTTPException(status_code=400, detail='AI screening not configured')
+
+    stmt = select(AIScreening).where(AIScreening.status.in_([ScreeningStatus.pending, ScreeningStatus.failed]))
+    pending = (await session.execute(stmt)).scalars().all()
+
+    async def _screen(app_id):
+        try:
+            async with SessionLocal() as bg_session:
+                await run_screening(bg_session, app_id)
+                await bg_session.commit()
+                logger.info('Re-screening completed for %s', app_id)
+        except Exception:
+            logger.warning('Re-screening failed for %s', app_id, exc_info=True)
+
+    count = 0
+    for screening in pending:
+        asyncio.create_task(_screen(screening.application_id))
+        count += 1
+
+    return {'message': f'Triggered re-screening for {count} applications'}

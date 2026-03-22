@@ -86,18 +86,23 @@ def run_migrations():
 async def on_startup() -> None:
     run_migrations()
     init_redis()
-    # Start background worker for queue processing (AI screening, etc.)
+    # Start background worker only if Redis is available
     import asyncio
-    from app.worker import process_once
-    async def _worker_loop():
-        while True:
-            try:
-                await process_once()
-            except Exception:
-                logger.warning('Worker loop error', exc_info=True)
-                await asyncio.sleep(5)
-    asyncio.create_task(_worker_loop())
-    logger.info('Background worker started')
+    try:
+        from app.db import get_redis
+        redis_client = get_redis()
+        await redis_client.ping()
+        from app.worker import process_once
+        async def _worker_loop():
+            while True:
+                try:
+                    await process_once()
+                except Exception:
+                    await asyncio.sleep(30)
+        asyncio.create_task(_worker_loop())
+        logger.info('Background worker started (Redis available)')
+    except Exception:
+        logger.warning('Redis unavailable — background worker disabled. AI screening runs inline.')
 
 
 @app.on_event('shutdown')
