@@ -4,6 +4,7 @@ import { RoleRoute } from './RoleRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
 
 // Public pages
+import { LandingPage } from '@/pages/public/LandingPage';
 import { LoginPage } from '@/pages/public/LoginPage';
 import { RegisterPage } from '@/pages/public/RegisterPage';
 
@@ -160,8 +161,8 @@ export function AppRouter() {
         <Route path="unauthorized" element={<UnauthorizedPage />} />
       </Route>
 
-      {/* Redirect root to login or app */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* Landing page */}
+      <Route path="/" element={<LandingPage />} />
       
       {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />

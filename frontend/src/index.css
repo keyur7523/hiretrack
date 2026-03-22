@@ -157,6 +157,11 @@
   }
 }
 
+/* Landing page styles */
+.landing-page {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
 /* Custom scrollbar */
 @layer utilities {
   .scrollbar-thin {

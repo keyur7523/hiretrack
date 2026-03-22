@@ -217,7 +217,7 @@ async def get_application_details(
             'location': job.location,
         },
         'statusHistory': status_history,
-        'aiScreening': ai_screening_data.model_dump() if ai_screening_data else None,
+        'aiScreening': ai_screening_data.model_dump(exclude_none=True) if ai_screening_data else None,
     }
     return response
 
