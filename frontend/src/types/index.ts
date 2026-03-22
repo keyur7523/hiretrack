@@ -123,6 +123,25 @@ export interface AuditLog {
   metadata: Record<string, unknown>;
 }
 
+// Employer Analytics Types
+export interface EmployerAnalytics {
+  summary: {
+    totalJobs: number;
+    totalApplications: number;
+    avgAiScore: number;
+  };
+  statusBreakdown: { status: string; count: number }[];
+  topJobs: {
+    jobId: string;
+    title: string;
+    company: string;
+    applicationCount: number;
+    avgAiScore: number | null;
+  }[];
+  applicationsOverTime: { date: string; count: number }[];
+  scoreDistribution: { range: string; count: number }[];
+}
+
 // Pagination Types
 export interface PaginatedResponse<T> {
   items: T[];

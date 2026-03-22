@@ -15,6 +15,7 @@ import { ApplicationsListPage } from '@/pages/applicant/ApplicationsListPage';
 import { ApplicationDetailPage } from '@/pages/applicant/ApplicationDetailPage';
 
 // Employer pages
+import { EmployerDashboardPage } from '@/pages/employer/EmployerDashboardPage';
 import { EmployerJobsListPage } from '@/pages/employer/EmployerJobsListPage';
 import { JobCreatePage } from '@/pages/employer/JobCreatePage';
 import { JobEditPage } from '@/pages/employer/JobEditPage';
@@ -89,6 +90,14 @@ export function AppRouter() {
         />
 
         {/* Employer routes */}
+        <Route
+          path="employer/dashboard"
+          element={
+            <RoleRoute allowedRoles={['employer']}>
+              <EmployerDashboardPage />
+            </RoleRoute>
+          }
+        />
         <Route
           path="employer/jobs"
           element={
